@@ -58,8 +58,8 @@ class TestHOTP(unittest.TestCase):
         # RFC 4226
         # https://www.ietf.org/rfc/rfc4226.txt
         # 5.4.  Example of HOTP Computation for Digit = 6
-        test = codecs.decode(b'1f8698690e02ca16618550ef7f19da8e945b555a', 'hex_codec')
-        self.assertEqual('872921', hotp.HOTP_Computation(test))
+        example_value = codecs.decode(b'1f8698690e02ca16618550ef7f19da8e945b555a', 'hex_codec')
+        self.assertEqual('872921', hotp.truncate(example_value))
 
     def test_create_HOTP(self):
         timestep = 30
