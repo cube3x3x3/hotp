@@ -5,9 +5,56 @@ import hmac
 import hashlib
 
 # logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+
+# rfc4226
+# https://www.ietf.org/rfc/rfc4226.txt
+#
+# HOTP(K,C) = Truncate(HMAC-SHA-1(K,C))
+
+def hotp(key, counter):
+    return truncate(hmac_sha_1(key, counter))
+
+def hmac_sha_1(key, counter):
+    _digest = hmac.new(key, counter, hashlib.sha1)
+    hex_digest = _digest.hexdigest()
+    bin_digest = _digest.digest()
+
+    logger.debug('hex digest:%s, bin digest:%s', hex_digest, bin_digest)
+    logger.debug('byte19:%s', hex(bin_digest[19]))
+    return bin_digest
+
+def truncate(bin_digest):
+    logger.debug('bin_digest[19]&0xf:%s', bin_digest[19] & 0xf)
+    offset = bin_digest[19] & 0xf
+    bin_code = (bin_digest[offset] & 0x7f) << 24 | (bin_digest[offset+1] & 0xff) << 16 | (bin_digest[offset+2] & 0xff) << 8 | (bin_digest[offset+3] & 0xff)
+    logger.debug('bin_code:%s, hex(bin_code):%s', bin_code, hex(bin_code))
+    _hotp = '%06d' % (bin_code % 10**6)
+    logger.info('HOTP:%s', _hotp)
+    return _hotp
+
+def str_to_byte(s):
+    return bytes(s, 'ascii')
+
+def int_to_byte(i):
+    return (i).to_bytes(8, byteorder='big')
+
+def int_to_bytestring(i, padding=8):
+    """
+        Turns an integer to the OATH specified
+        bytestring, which is fed to the HMAC
+        along with the secret
+    """
+    result = bytearray()
+    while i != 0:
+        result.append(i & 0xFF)
+        i >>= 8
+        # It's necessary to convert the final result from bytearray to bytes
+        # because the hmac functions in python 2.6 and 3.3 don't work with
+        # bytearray
+    return bytes(bytearray(reversed(result)).rjust(padding, b'\0'))
+
+
 
 def create_messsage_time(timestep):
     now = datetime.datetime.now()
@@ -38,15 +85,23 @@ def HOTP_Computation(bindig):
     logger.info('answer:%s', ans)
     return ans
 
-timestep = 30
-message_time = create_messsage_time(timestep)
-key = bytes("secret key", 'ascii')
-text = bytes(str(message_time), 'ascii')
-bindig = create_hmacdigt(key, text)
-n = 0
-for i in bindig:
-    logger.debug('%s, %s', n, hex(i))
-    n = n + 1
-logger.info('HOTP:%s', HOTP_Computation(bindig))
+def main():
+    key = bytes("secret key", 'ascii')
+    counter = bytes(0)
+    print('hotp', hotp(key, counter))
 
+
+if __name__ == "__main__":
+    main()
+
+    timestep = 30
+    message_time = create_messsage_time(timestep)
+    key = bytes("secret key", 'ascii')
+    text = bytes(str(message_time), 'ascii')
+    bindig = create_hmacdigt(key, text)
+    n = 0
+    for i in bindig:
+        print('%s, %s', n, hex(i))
+        n = n + 1
+    print('HOTP:', HOTP_Computation(bindig))
 
