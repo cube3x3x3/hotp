@@ -89,9 +89,5 @@ if __name__ == "__main__":
     key = bytes("secret key", 'ascii')
     text = bytes(str(message_time), 'ascii')
     bindig = create_hmacdigt(key, text)
-    n = 0
-    for i in bindig:
-        print('%s, %s', n, hex(i))
-        n = n + 1
     print('HOTP:', HOTP_Computation(bindig))
 
