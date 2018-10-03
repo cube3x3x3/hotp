@@ -39,23 +39,6 @@ def str_to_byte(s):
 def int_to_byte(i):
     return (i).to_bytes(8, byteorder='big')
 
-def int_to_bytestring(i, padding=8):
-    """
-        Turns an integer to the OATH specified
-        bytestring, which is fed to the HMAC
-        along with the secret
-    """
-    result = bytearray()
-    while i != 0:
-        result.append(i & 0xFF)
-        i >>= 8
-        # It's necessary to convert the final result from bytearray to bytes
-        # because the hmac functions in python 2.6 and 3.3 don't work with
-        # bytearray
-    return bytes(bytearray(reversed(result)).rjust(padding, b'\0'))
-
-
-
 def create_messsage_time(timestep):
     now = datetime.datetime.now()
     logger.debug('now:%s', now)

@@ -3,7 +3,7 @@ import unittest
 import logging
 
 # logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 # logging.getLogger('').setLevel(logging.INFO)
 
@@ -43,26 +43,14 @@ class TestHOTP(unittest.TestCase):
         9:        ("2679dc69",        645520489,     520489)}
 
         for i in range(10):
-            logger.info("test_hexadecimal_array%d: %s", i, test_hexadecimal_array[i])
             _counter = hotp.int_to_byte(i)
+            logger.info('K:%s, C:%s', _key.hex(), _counter.hex())
             _bin_digest = hotp.hmac_sha_1(_key, _counter)
             _hex_digest = _bin_digest.hex()
+            logger.info("test_hexadecimal_array%d: %s", i, test_hexadecimal_array[i])
             self.assertEqual(test_hexadecimal_array[i], _hex_digest)
             logger.info("test_truncated_array%d:%s",i, test_truncated_array[i][2])
             self.assertEqual(str(test_truncated_array[i][2]), hotp.hotp(_key, _counter))
-
-        #  bytes(_secret, 'ascii')
-        #_counter = hotp.int_to_bytestring(0)
-        _counter = hotp.int_to_byte(0)
-        #_counter = (1).to_bytes(8, byteorder='big')
-        logger.info('_secret.hex:%s', _key.hex())
-        logger.info('_counter.hex:%s', _counter.hex())
-
-        _bin_digest = hotp.hmac_sha_1(_key, _counter)
-        _hex_digest = _bin_digest.hex()
-        self.assertEqual('cc93cf18508d94934c64b65d8ba7667fb7cde4b0', _hex_digest)
-        # cc93cf18508d94934c64b65d8ba7667fb7cde4b0   
-        self.assertEqual('755224', hotp.hotp(_key, _counter))
 
 
     def test_rfc_sample(self):
