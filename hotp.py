@@ -1,6 +1,4 @@
 import logging
-import datetime
-import time
 import hmac
 import hashlib
 
