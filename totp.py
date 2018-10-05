@@ -19,6 +19,12 @@ logger = logging.getLogger(__name__)
 # Unix time is 59 seconds, and T = 2 if the current Unix time is
 # 60 seconds.
 
+def totp_core(key, time, t_zero, time_step):
+    t = int((time - t_zero) / time_step)
+    logger.info('key:%s, time:%s',key, time)
+    t = int_to_byte(t)
+    return truncate(hmac_sha_1(key, t))
+
 def totp(key, t_zero=0, time_step=30):
     now = datetime.datetime.now()
     unix_time = int(time.mktime(now.timetuple()))
@@ -44,8 +50,8 @@ def truncate(bin_digest):
     offset = bin_digest[19] & 0xf
     bin_code = (bin_digest[offset] & 0x7f) << 24 | (bin_digest[offset+1] & 0xff) << 16 | (bin_digest[offset+2] & 0xff) << 8 | (bin_digest[offset+3] & 0xff)
     logger.debug('bin_code:%s, hex(bin_code):%s', bin_code, hex(bin_code))
-    _hotp = '%06d' % (bin_code % 10**6)
-    logger.info('HOTP:%s', _hotp)
+    _hotp = '%08d' % (bin_code % 10**8)
+    logger.info('TOTP:%s', _hotp)
     return _hotp
 
 def str_to_byte(s):
@@ -84,19 +90,22 @@ def HOTP_Computation(bindig):
     return ans
 
 def main():
-    key = bytes("secret key", 'ascii')
-    counter = bytes(0)
-    print('hotp', hotp(key, counter))
-    print('totp', totp(key))
-
-
-if __name__ == "__main__":
-    main()
-
     timestep = 30
     message_time = create_messsage_time(timestep)
     key = bytes("secret key", 'ascii')
     text = bytes(str(message_time), 'ascii')
     bindig = create_hmacdigt(key, text)
     print('HOTP:', HOTP_Computation(bindig))
+
+    _secret = "12345678901234567890"
+    key = str_to_byte(_secret)
+    counter = int_to_byte(0)
+    print('hotp', hotp(key, counter))
+    print('totp', totp_core(key, 59, 0, 30))
+
+
+
+if __name__ == "__main__":
+    main()
+
 
