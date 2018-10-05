@@ -11,7 +11,8 @@ class Test_hotp(unittest.TestCase):
 
     def test_rfc4226_test_case(self):
         _secret = "12345678901234567890"
-        _key = hotp.str_to_byte(_secret)
+        _hotp = hotp.HOTP()
+        _key = _hotp.str_to_byte(_secret)
         self.assertEqual('3132333435363738393031323334353637383930', _key.hex())
         # Secret = 0x3132333435363738393031323334353637383930
 
@@ -43,14 +44,15 @@ class Test_hotp(unittest.TestCase):
         9:        ("2679dc69",        645520489,     520489)}
 
         for i in range(10):
-            _counter = hotp.int_to_byte(i)
+            _counter = _hotp.int_to_byte(i)
             logger.info('K:%s, C:%s', _key.hex(), _counter.hex())
-            _bin_digest = hotp.hmac_sha_1(_key, _counter)
+            _bin_digest = _hotp.hmac_sha_1(_key, _counter)
             _hex_digest = _bin_digest.hex()
             logger.info("test_hexadecimal_array%d: %s", i, test_hexadecimal_array[i])
             self.assertEqual(test_hexadecimal_array[i], _hex_digest)
             logger.info("test_truncated_array%d:%s",i, test_truncated_array[i][2])
-            self.assertEqual(str(test_truncated_array[i][2]), hotp.hotp(_key, _counter))
+            _hotp.update(_key, _counter)
+            self.assertEqual(str(test_truncated_array[i][2]), _hotp.digest())
 
     def test_rfc_sample(self):
         import codecs
@@ -58,7 +60,8 @@ class Test_hotp(unittest.TestCase):
         # https://www.ietf.org/rfc/rfc4226.txt
         # 5.4.  Example of HOTP Computation for Digit = 6
         example_value = codecs.decode(b'1f8698690e02ca16618550ef7f19da8e945b555a', 'hex_codec')
-        self.assertEqual('872921', hotp.truncate(example_value))
+        _hotp = hotp.HOTP()
+        self.assertEqual('872921', _hotp.truncate(example_value))
 
 if __name__ == "__main__":
     unittest.main(exit=False)
