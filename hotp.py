@@ -59,6 +59,5 @@ def main():
     hotp.update(key, counter)
     print('hotp', hotp.digest())
 
-
 if __name__ == "__main__":
     main()
