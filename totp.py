@@ -1,8 +1,8 @@
 import logging
-import datetime
-import time
 import hmac
 import hashlib
+import datetime
+import time
 
 # logging
 logger = logging.getLogger(__name__)
@@ -18,6 +18,14 @@ logger = logging.getLogger(__name__)
 # For example, with T0 = 0 and Time Step X = 30, T = 1 if the current
 # Unix time is 59 seconds, and T = 2 if the current Unix time is
 # 60 seconds.
+
+def totp(key, t_zero=0, time_step=30):
+    now = datetime.datetime.now()
+    unix_time = int(time.mktime(now.timetuple()))
+    t = int((unix_time - t_zero) / time_step)
+    logger.info('now:%s, unix_time:%s, k:%s, t:%s', now, unix_time, key, t)
+    t = int_to_byte(t)
+    return truncate(hmac_sha_1(key, t))
 
 def hotp(key, counter):
     return truncate(hmac_sha_1(key, counter))
@@ -79,6 +87,7 @@ def main():
     key = bytes("secret key", 'ascii')
     counter = bytes(0)
     print('hotp', hotp(key, counter))
+    print('totp', totp(key))
 
 
 if __name__ == "__main__":
