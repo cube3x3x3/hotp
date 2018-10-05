@@ -19,11 +19,12 @@ class HOTP:
 
     def update(self, key, counter):
         self._digest = self.truncate(self.hmac_sha_1(key, counter))
+        return self._digest
 
     def digest(self):
         return self._digest
 
-    def hotp(key, counter):
+    def hotp(self, key, counter):
         return self.truncate(self.hmac_sha_1(key, counter))
 
     def hmac_sha_1(self, key, counter):
@@ -49,6 +50,9 @@ class HOTP:
 
     def int_to_byte(self, i):
         return (i).to_bytes(8, byteorder='big')
+
+def new(key=None, counter=None):
+    return HOTP(key, counter)
 
 def main():
     key = bytes("secret key", 'ascii')
