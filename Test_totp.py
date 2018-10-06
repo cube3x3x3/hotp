@@ -10,11 +10,16 @@ logger = logging.getLogger(__name__)
 
 class Test_totp(unittest.TestCase):
     def test_rfc6238_test_case(self):
-        _secret = "12345678901234567890"
-        key = totp.str_to_byte(_secret)
+        _20byte_secret = "12345678901234567890"
+        _32byte_secret = "12345678901234567890123456789012"
+        _64byte_secret = "1234567890123456789012345678901234567890123456789012345678901234"
+        _totp =totp.new()
+        _20byte_key = _totp.str_to_byte(_20byte_secret)
+        _32byte_key = _totp.str_to_byte(_32byte_secret)
+        _64byte_key = _totp.str_to_byte(_64byte_secret)
         t_zero = 0
         time_step = 30
-        self.assertTrue(totp.totp(key, t_zero, time_step))
+        self.assertTrue(_totp.totp(_20byte_key, t_zero, time_step))
 
         # : '  Time (sec) ' , '   UTC Time   ' , ' Value of T (hex) ' , '   TOTP   ' , '  Mode  ' , 
         test_vectors = {
@@ -37,17 +42,22 @@ class Test_totp(unittest.TestCase):
         16:  (" 20000000000 " , "  2603-10-11  " , " 0000000027BC86AA " , " 65353130 " , "  SHA1  " ), 
         17:  (" 20000000000 " , "  2603-10-11  " , " 0000000027BC86AA " , " 77737706 " , " SHA256 " ) 
         }
-        logger.info('i:%s', test_vectors[1])
-        logger.info('%s', test_vectors[1][4])
         for i in range(17):
+            _time = int(test_vectors[i][0])
+            _test_totp = test_vectors[i][3].strip()
+            _hash_name = test_vectors[i][4].strip()
+            logger.info('i:%s, time:%s, totp:%s, hash:%s', i, _time, _test_totp, _hash_name)
+            if _hash_name == 'SHA512':
+                _key = _64byte_key
+            elif _hash_name == 'SHA256':
+                _key = _32byte_key
+            else: # hash_name == 'SHA1':
+                _key = _20byte_key
+
+            _digest = _totp.totp_core(_key, _time, t_zero, time_step, _hash_name)
+            logger.info('i:%s, %s', i, _digest)
+            self.assertEqual(_test_totp, _digest)
             logger.info('%s', test_vectors[i])
-            # Mode SHA1
-            if test_vectors[i][4].strip() == "SHA1":
-                _time = int(test_vectors[i][0])
-                _totp = totp.totp_core(key, _time, 0, 30)
-                _test_totp = test_vectors[i][3].strip()
-                logger.info('i:%s, %s', i, _totp)
-                self.assertEqual(_test_totp, _totp)
  
 if __name__ == "__main__":
     unittest.main(exit=False)

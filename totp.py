@@ -19,90 +19,94 @@ logger = logging.getLogger(__name__)
 # Unix time is 59 seconds, and T = 2 if the current Unix time is
 # 60 seconds.
 
-def totp_core(key, time, t_zero, time_step):
-    t = int((time - t_zero) / time_step)
-    logger.info('key:%s, time:%s',key, time)
-    t = int_to_byte(t)
-    return truncate(hmac_sha_1(key, t))
+class TOTP:
+    def __init__(self, key=None, t_zero=0, time_step=30):
+        self._digest = None
 
-def totp(key, t_zero=0, time_step=30):
-    now = datetime.datetime.now()
-    unix_time = int(time.mktime(now.timetuple()))
-    t = int((unix_time - t_zero) / time_step)
-    logger.info('now:%s, unix_time:%s, k:%s, t:%s', now, unix_time, key, t)
-    t = int_to_byte(t)
-    return truncate(hmac_sha_1(key, t))
+        if key is not None:
+            self.update(key, t_zero, time_step)
 
-def hotp(key, counter):
-    return truncate(hmac_sha_1(key, counter))
+    def update(self, key, t_zero=0, time_step=30):
+        return self.totp(key, t_zero, time_step)
 
-def hmac_sha_1(key, counter):
-    _digest = hmac.new(key, counter, hashlib.sha1)
-    hex_digest = _digest.hexdigest()
-    bin_digest = _digest.digest()
+    def digest(self):
+        return self._digest
 
-    logger.debug('hex digest:%s, bin digest:%s', hex_digest, bin_digest)
-    logger.debug('byte19:%s', hex(bin_digest[19]))
-    return bin_digest
+    def current_time(self):
+        now = datetime.datetime.now()
+        unix_time = int(time.mktime(now.timetuple()))
+        logger.info('now:%s, unix_time:%s', now, unix_time)
+        return unix_time
 
-def truncate(bin_digest):
-    logger.debug('bin_digest[19]&0xf:%s', bin_digest[19] & 0xf)
-    offset = bin_digest[19] & 0xf
-    bin_code = (bin_digest[offset] & 0x7f) << 24 | (bin_digest[offset+1] & 0xff) << 16 | (bin_digest[offset+2] & 0xff) << 8 | (bin_digest[offset+3] & 0xff)
-    logger.debug('bin_code:%s, hex(bin_code):%s', bin_code, hex(bin_code))
-    _hotp = '%08d' % (bin_code % 10**8)
-    logger.info('TOTP:%s', _hotp)
-    return _hotp
+    def totp_core(self, key, time, t_zero, time_step, hash_name):
+        t = int((time - t_zero) / time_step)
+        logger.info('key:%s, time:%s',key, time)
+        t = self.int_to_byte(t)
+        return self.dynamic_truncate(self.hmac_hash(key, t, hash_name))
+        # return self.truncate(self.hmac_sha_1(key, t))
 
-def str_to_byte(s):
-    return bytes(s, 'ascii')
+    # now, sha1
+    def totp(self, key, t_zero=0, time_step=30):
+        unix_time = self.current_time()
+        return self.totp_core(key, unix_time, t_zero, time_step, 'SHA1')
+        #t = int((unix_time - t_zero) / time_step)
+        #logger.info('time:%s, k:%s, t:%s', unix_time, key, t)
+        #t = self.int_to_byte(t)
+        #self._digest = self.dynamic_truncate(self.hmac_hash(key, t, 'SHA1'))
+        #return self._digest
 
-def int_to_byte(i):
-    return (i).to_bytes(8, byteorder='big')
+    def hmac_hash(self, key, msg, hash_name=None):
+        logger.debug('hash_name:%s', hash_name)
+        if hash_name == 'SHA1':
+            logger.debug('sha1 digest')
+            _digest = hmac.new(key, msg, hashlib.sha1)
+        elif hash_name == 'SHA256':
+            logger.debug('sha256 digest')
+            _digest = hmac.new(key, msg, hashlib.sha256)
+        elif hash_name == 'SHA512':
+            logger.debug('sha512 digest')
+            _digest = hmac.new(key, msg, hashlib.sha512)
+        else:
+            logger.debug('sha1 digest')
+            _digest = hmac.new(key, msg, hashlib.sha1)
 
-def create_messsage_time(timestep):
-    now = datetime.datetime.now()
-    logger.debug('now:%s', now)
+        hex_digest = _digest.hexdigest()
+        bin_digest = _digest.digest()
+        logger.debug('hex digest:%s, bin digest:%s', hex_digest, bin_digest)
+        logger.debug('bin len%s', len(bin_digest))
+        _len = len(bin_digest)
+        logger.debug('byte%d:%s', _len-1, hex(bin_digest[_len-1]))
+        return bin_digest
 
-    unix_time = int(time.mktime(now.timetuple()))
-    logger.info('unix_time:%s', unix_time)
-    message_time = int(unix_time / timestep)
-    return message_time
+    def dynamic_truncate(self, bin_digest):
+        logger.debug('bin_digest[%d]&0xf:%s', len(bin_digest), bin_digest[len(bin_digest)-1] & 0xf)
+        offset = bin_digest[len(bin_digest)-1] & 0xf
+        bin_code = (bin_digest[offset] & 0x7f) << 24 | (bin_digest[offset+1] & 0xff) << 16 | (bin_digest[offset+2] & 0xff) << 8 | (bin_digest[offset+3] & 0xff)
+        logger.debug('bin_code:%s, hex(bin_code):%s', bin_code, hex(bin_code))
+        # _hotp = '%08d' % (bin_code % 10**8)
+        _hotp = '{:08d}'.format(bin_code % 10**8)
+        logger.info('TOTP:%s', _hotp)
+        self._digest = _hotp
+        return self._digest
 
-def create_hmacdigt(key, text):
-    dig = hmac.new(key, text, hashlib.sha1)
-    hexdig = dig.hexdigest()
-    bindig = dig.digest()
+    def str_to_byte(self, s):
+        return bytes(s, 'ascii')
 
-    logger.debug('hexdig:%s, bindig:%s', hexdig, bindig)
-    # print(bindig.hex())
-    # print (hex(bindig))
-    logger.debug('byte19:%s', hex(bindig[19]))
-    return bindig
+    def int_to_byte(self, i):
+        return (i).to_bytes(8, byteorder='big')
 
-def HOTP_Computation(bindig):
-    logger.debug('bindig[19]&0xf:%s', bindig[19] & 0xf)
-    offset = bindig[19] & 0xf
-    sn = (bindig[offset] & 0x7f) << 24 | (bindig[offset+1] & 0xff) << 16 | (bindig[offset+2] & 0xff) << 8 | (bindig[offset+3] & 0xff)
-    logger.debug('sn:%s, hex(sn):%s', sn, hex(sn))
-    ans = '%06d' % (sn % 10**6)
-    logger.info('answer:%s', ans)
-    return ans
+def new(key=None, t_zero=0, time_step=30):
+    return TOTP(key, t_zero, time_step)
 
 def main():
-    timestep = 30
-    message_time = create_messsage_time(timestep)
-    key = bytes("secret key", 'ascii')
-    text = bytes(str(message_time), 'ascii')
-    bindig = create_hmacdigt(key, text)
-    print('HOTP:', HOTP_Computation(bindig))
+    test = TOTP()
 
     _secret = "12345678901234567890"
-    key = str_to_byte(_secret)
-    counter = int_to_byte(0)
-    print('hotp', hotp(key, counter))
-    print('totp', totp_core(key, 59, 0, 30))
-
+    key = test.str_to_byte(_secret)
+    counter = test.int_to_byte(0)
+    print('totp 59:', test.totp_core(key, 59, 0, 30, 'SHA1'))
+    print('totp now:', test.update(key, 0, 30))
+    print('digit:', test.digest())
 
 
 if __name__ == "__main__":
