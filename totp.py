@@ -26,8 +26,10 @@ class TOTP:
         if key is not None:
             self.update(key, t_zero, time_step)
 
-    def update(self, key, t_zero=0, time_step=30):
-        return self.totp(key, t_zero, time_step)
+    def update(self, key, time=None, t_zero=0, time_step=30, hash_name=None):
+        if time is not None:
+            return self.totp_core(key, time, t_zero, time_step, hash_name)
+        return self.totp(key)
 
     def digest(self):
         return self._digest
@@ -49,11 +51,6 @@ class TOTP:
     def totp(self, key, t_zero=0, time_step=30):
         unix_time = self.current_time()
         return self.totp_core(key, unix_time, t_zero, time_step, 'SHA1')
-        #t = int((unix_time - t_zero) / time_step)
-        #logger.info('time:%s, k:%s, t:%s', unix_time, key, t)
-        #t = self.int_to_byte(t)
-        #self._digest = self.dynamic_truncate(self.hmac_hash(key, t, 'SHA1'))
-        #return self._digest
 
     def hmac_hash(self, key, msg, hash_name=None):
         logger.debug('hash_name:%s', hash_name)
@@ -66,7 +63,7 @@ class TOTP:
         elif hash_name == 'SHA512':
             logger.debug('sha512 digest')
             _digest = hmac.new(key, msg, hashlib.sha512)
-        else:
+        else: # hash_name is None
             logger.debug('sha1 digest')
             _digest = hmac.new(key, msg, hashlib.sha1)
 
@@ -84,9 +81,9 @@ class TOTP:
         bin_code = (bin_digest[offset] & 0x7f) << 24 | (bin_digest[offset+1] & 0xff) << 16 | (bin_digest[offset+2] & 0xff) << 8 | (bin_digest[offset+3] & 0xff)
         logger.debug('bin_code:%s, hex(bin_code):%s', bin_code, hex(bin_code))
         # _hotp = '%08d' % (bin_code % 10**8)
-        _hotp = '{:08d}'.format(bin_code % 10**8)
-        logger.info('TOTP:%s', _hotp)
-        self._digest = _hotp
+        _totp = '{:08d}'.format(bin_code % 10**8)
+        logger.info('TOTP:%s', _totp)
+        self._digest = _totp
         return self._digest
 
     def str_to_byte(self, s):
@@ -103,9 +100,8 @@ def main():
 
     _secret = "12345678901234567890"
     key = test.str_to_byte(_secret)
-    counter = test.int_to_byte(0)
     print('totp 59:', test.totp_core(key, 59, 0, 30, 'SHA1'))
-    print('totp now:', test.update(key, 0, 30))
+    print('totp now:', test.update(key))
     print('digit:', test.digest())
 
 
