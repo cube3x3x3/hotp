@@ -40,11 +40,11 @@ class TOTP:
         logger.info('now:%s, unix_time:%s', now, unix_time)
         return unix_time
 
-    def totp_core(self, key, time, t_zero, time_step, hash_name):
+    def totp_core(self, key, time, t_zero, time_step, hash_name, digits=6):
         t = int((time - t_zero) / time_step)
         logger.info('key:%s, time:%s',key, time)
         t = self.int_to_byte(t)
-        return self.dynamic_truncate(self.hmac_hash(key, t, hash_name))
+        return self.dynamic_truncate(self.hmac_hash(key, t, hash_name), digits)
         # return self.truncate(self.hmac_sha_1(key, t))
 
     # now, sha1
@@ -75,13 +75,17 @@ class TOTP:
         logger.debug('byte%d:%s', _len-1, hex(bin_digest[_len-1]))
         return bin_digest
 
-    def dynamic_truncate(self, bin_digest):
+    def dynamic_truncate(self, bin_digest, digits=6):
         logger.debug('bin_digest[%d]&0xf:%s', len(bin_digest), bin_digest[len(bin_digest)-1] & 0xf)
         offset = bin_digest[len(bin_digest)-1] & 0xf
         bin_code = (bin_digest[offset] & 0x7f) << 24 | (bin_digest[offset+1] & 0xff) << 16 | (bin_digest[offset+2] & 0xff) << 8 | (bin_digest[offset+3] & 0xff)
         logger.debug('bin_code:%s, hex(bin_code):%s', bin_code, hex(bin_code))
         # _hotp = '%08d' % (bin_code % 10**8)
-        _totp = '{:08d}'.format(bin_code % 10**8)
+        if digits == 8:
+            _totp = '{:08d}'.format(bin_code % 10**8)
+        else: #elif digits == 6:
+            _totp = '{:06d}'.format(bin_code % 10**6)
+
         logger.info('TOTP:%s', _totp)
         self._digest = _totp
         return self._digest
@@ -100,9 +104,10 @@ def main():
 
     _secret = "12345678901234567890"
     key = test.str_to_byte(_secret)
-    print('totp 59:', test.totp_core(key, 59, 0, 30, 'SHA1'))
+    print('totp 59:', test.totp_core(key, 59, 0, 30, 'SHA1', 8))
     print('totp now:', test.update(key))
     print('digit:', test.digest())
+    
 
 
 if __name__ == "__main__":

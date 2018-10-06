@@ -54,7 +54,7 @@ class Test_totp(unittest.TestCase):
             else: # hash_name == 'SHA1':
                 _key = _20byte_key
 
-            _digest = _totp.totp_core(_key, _time, t_zero, time_step, _hash_name)
+            _digest = _totp.totp_core(_key, _time, t_zero, time_step, _hash_name, 8)
             logger.info('i:%s, %s', i, _digest)
             self.assertEqual(_test_totp, _digest)
             logger.info('%s', test_vectors[i])
