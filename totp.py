@@ -107,7 +107,14 @@ def main():
     print('totp 59:', test.totp_core(key, 59, 0, 30, 'SHA1', 8))
     print('totp now:', test.update(key))
     print('digit:', test.digest())
-    
+
+    # totp live demo
+    # https://authenticator.ppl.family/
+    # otpauth://totp/ACME%20Co:john@example.com?secret=HXDMVJECJJWSRB3HWIZR4IFUGFTMXBOZ&issuer=ACME%20Co&algorithm=SHA1&digits=6&period=30
+    import base64
+    acm_secret = base64.b32decode('HXDMVJECJJWSRB3HWIZR4IFUGFTMXBOZ')
+    print('acme secret', acm_secret)
+    print('live test:', test.totp_core(acm_secret, test.current_time(), 0, 30, 'SHA1', 6))
 
 
 if __name__ == "__main__":
